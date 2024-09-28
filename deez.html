@@ -218,10 +218,12 @@
 
             // Update gravity based on the current rotation using trigonometric functions
             const gravityMagnitude = 0.5;
-            sprite.gravity = {
-                x: gravityMagnitude * Math.sin(currentRotation),
-                y: gravityMagnitude * Math.cos(currentRotation)
-            };
+            setTimeout(() => {
+        sprite.gravity = {
+            x: gravityMagnitude * Math.sin(currentRotation),
+            y: gravityMagnitude * Math.cos(currentRotation)
+        };
+    }, 300); // Delay for 500 milliseconds (adjust as needed)
         }
 
 
