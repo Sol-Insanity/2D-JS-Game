@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze with Gravity-Affected Sprite</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mazeCanvas"></canvas>
+    <script>
+        // Get the canvas element and its 2D rendering context
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set the size of each cell in the maze
+        const cellSize = 20;
+        // Set the dimensions of the maze (in cells)
+        const mazeWidth = 21;
+        const mazeHeight = 21;
+
+        // Set the canvas size based on the maze dimensions
+        canvas.width = mazeWidth * cellSize;
+        canvas.height = mazeHeight * cellSize;
+
+        // Wall class to represent each wall in the maze
+        class Wall {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            // Method to draw the wall on the canvas
+            draw() {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        // Sprite class to represent the player
+        class Sprite {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = cellSize - 4;
+                this.height = cellSize - 4;
+                this.velocityY = 0;
+                this.gravity = 0.5;
+            }
+
+            // Method to draw the sprite on the canvas
+            draw() {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            // Method to update the sprite's position
+            update() {
+                this.velocityY += this.gravity;
+                this.y += this.velocityY;
+
+                // Check for collisions with walls
+                walls.forEach(wall => {
+                    if (this.checkCollision(wall)) {
+                        if (this.velocityY > 0) {
+                            this.y = wall.y - this.height;
+                            this.velocityY = 0;
+                        } else if (this.velocityY < 0) {
+                            this.y = wall.y + wall.height;
+                            this.velocityY = 0;
+                        }
+                    }
+                });
+
+                // Keep sprite within canvas bounds
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.velocityY = 0;
+                }
+            }
+
+            // Method to check collision with a wall
+            checkCollision(wall) {
+                return this.x < wall.x + wall.width &&
+                       this.x + this.width > wall.x &&
+                       this.y < wall.y + wall.height &&
+                       this.y + this.height > wall.y;
+            }
+        }
+
+        // Array to store all the walls
+        let walls = [];
+
+        // Create the sprite
+        let sprite = new Sprite(cellSize, cellSize);
+
+        // Function to generate the maze (same as before)
+        function generateMaze() {
+            // Initialize the maze grid (1 for wall, 0 for path)
+            let grid = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(1));
+
+            // Helper function to get unvisited neighbors
+            function getUnvisitedNeighbors(x, y) {
+                const neighbors = [
+                    [x, y - 2], // Up
+                    [x + 2, y], // Right
+                    [x, y + 2], // Down
+                    [x - 2, y]  // Left
+                ];
+                return neighbors.filter(([nx, ny]) => 
+                    nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && grid[ny][nx] === 1
+                );
+            }
+
+            // Recursive function to carve paths
+            function carvePath(x, y) {
+                grid[y][x] = 0; // Mark current cell as path
+
+                const neighbors = getUnvisitedNeighbors(x, y);
+                while (neighbors.length > 0) {
+                    const [nx, ny] = neighbors.splice(Math.floor(Math.random() * neighbors.length), 1)[0];
+                    if (grid[ny][nx] === 1) {
+                        // Carve path to the neighbor
+                        grid[y + (ny - y) / 2][x + (nx - x) / 2] = 0;
+                        carvePath(nx, ny);
+                    }
+                }
+            }
+
+            // Start carving from the top-left corner
+            carvePath(1, 1);
+
+            // Ensure start and end points are open
+            grid[1][0] = 0; // Start
+            grid[mazeHeight - 2][mazeWidth - 1] = 0; // End
+
+            // Create Wall objects based on the grid
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    if (grid[y][x] === 1) {
+                        walls.push(new Wall(x * cellSize, y * cellSize, cellSize, cellSize));
+                    }
+                }
+            }
+        }
+
+        // Function to draw the maze and sprite
+        function draw() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all walls
+            walls.forEach(wall => wall.draw());
+
+            // Draw start point (green)
+            ctx.fillStyle = 'green';
+            ctx.fillRect(0, cellSize, cellSize, cellSize);
+
+            // Draw end point (red)
+            ctx.fillStyle = 'red';
+            ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
+
+            // Draw the sprite
+            sprite.draw();
+        }
+
+        // Game loop
+        function gameLoop() {
+            sprite.update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Generate the maze
+        generateMaze();
+
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</html>

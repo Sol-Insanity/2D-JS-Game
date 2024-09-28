@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze with Gravity-Affected Sprite</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mazeCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const cellSize = 20;
+        const mazeWidth = 21;
+        const mazeHeight = 21;
+
+        canvas.width = mazeWidth * cellSize;
+        canvas.height = mazeHeight * cellSize;
+
+        class Wall {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            draw() {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        class Sprite {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = cellSize - 4;
+                this.height = cellSize - 4;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.gravity = { x: 0, y: 0.5 }; // Gravity starts downward
+            }
+
+            draw() {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            update() {
+                // Apply gravity in the current direction
+                this.velocityX += this.gravity.x;
+                this.velocityY += this.gravity.y;
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Collision detection with walls
+                walls.forEach(wall => {
+                    if (this.checkCollision(wall)) {
+                        // Adjust for different collision sides based on movement direction
+                        if (this.velocityY > 0 && this.y < wall.y) {
+                            this.y = wall.y - this.height;
+                            this.velocityY = 0;
+                        } else if (this.velocityY < 0 && this.y > wall.y) {
+                            this.y = wall.y + wall.height;
+                            this.velocityY = 0;
+                        } else if (this.velocityX > 0 && this.x < wall.x) {
+                            this.x = wall.x - this.width;
+                            this.velocityX = 0;
+                        } else if (this.velocityX < 0 && this.x > wall.x) {
+                            this.x = wall.x + wall.width;
+                            this.velocityX = 0;
+                        }
+                    }
+                });
+
+                // Keep sprite within canvas bounds
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.velocityY = 0;
+                } else if (this.y < 0) {
+                    this.y = 0;
+                    this.velocityY = 0;
+                }
+
+                if (this.x + this.width > canvas.width) {
+                    this.x = canvas.width - this.width;
+                    this.velocityX = 0;
+                } else if (this.x < 0) {
+                    this.x = 0;
+                    this.velocityX = 0;
+                }
+            }
+
+            checkCollision(wall) {
+                return this.x < wall.x + wall.width &&
+                       this.x + this.width > wall.x &&
+                       this.y < wall.y + wall.height &&
+                       this.y + this.height > wall.y;
+            }
+        }
+
+        let walls = [];
+        let sprite = new Sprite(cellSize, cellSize);
+        let currentRotation = 0;  // Tracks the current maze rotation angle (in radians)
+
+        function generateMaze() {
+            let grid = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(1));
+
+            function getUnvisitedNeighbors(x, y) {
+                const neighbors = [
+                    [x, y - 2], [x + 2, y], [x, y + 2], [x - 2, y]
+                ];
+                return neighbors.filter(([nx, ny]) => 
+                    nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && grid[ny][nx] === 1
+                );
+            }
+
+            function carvePath(x, y) {
+                grid[y][x] = 0;
+
+                const neighbors = getUnvisitedNeighbors(x, y);
+                while (neighbors.length > 0) {
+                    const [nx, ny] = neighbors.splice(Math.floor(Math.random() * neighbors.length), 1)[0];
+                    if (grid[ny][nx] === 1) {
+                        grid[y + (ny - y) / 2][x + (nx - x) / 2] = 0;
+                        carvePath(nx, ny);
+                    }
+                }
+            }
+
+            carvePath(1, 1);
+
+            grid[1][0] = 0;
+            grid[mazeHeight - 2][mazeWidth - 1] = 0;
+
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    if (grid[y][x] === 1) {
+                        walls.push(new Wall(x * cellSize, y * cellSize, cellSize, cellSize));
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();  // Save the current canvas state
+            ctx.translate(canvas.width / 2, canvas.height / 2);  // Move the origin to the center
+            ctx.rotate(currentRotation);  // Rotate the canvas
+            ctx.translate(-canvas.width / 2, -canvas.height / 2);  // Move the origin back
+
+            walls.forEach(wall => wall.draw());
+
+            ctx.fillStyle = 'green';
+            ctx.fillRect(0, cellSize, cellSize, cellSize);
+
+            ctx.fillStyle = 'red';
+            ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
+
+            sprite.draw();
+            ctx.restore();  // Restore the original canvas state (before rotation)
+        }
+
+        function gameLoop() {
+            sprite.update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function rotateMaze(direction) {
+    const angleStep = Math.PI / 2; // 90 degrees in radians
+    currentRotation += direction === 'right' ? angleStep : -angleStep;
+
+    // Update gravity based on the current rotation using trigonometric functions
+    const gravityMagnitude = 0.5;
+    sprite.gravity = {
+        x: gravityMagnitude * Math.sin(currentRotation),
+        y: gravityMagnitude * Math.cos(currentRotation)
+    };
+}
+
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                rotateMaze('right');
+            } else if (e.key === 'ArrowLeft') {
+                rotateMaze('left');
+            }
+        });
+
+        generateMaze();
+        gameLoop();
+    </script>
+</body>
+</html>

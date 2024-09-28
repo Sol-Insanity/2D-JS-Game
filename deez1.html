@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze with Gravity-Affected Sprite</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+
+        #victoryScreen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: green;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mazeCanvas"></canvas>
+    <div id="victoryScreen">🎉 Victory! You Won! 🎉</div>
+    <script>
+        const canvas = document.getElementById('mazeCanvas');
+        const ctx = canvas.getContext('2d');
+        const victoryScreen = document.getElementById('victoryScreen');
+
+        const cellSize = 20;
+        const mazeWidth = 21;
+        const mazeHeight = 21;
+
+        canvas.width = mazeWidth * cellSize;
+        canvas.height = mazeHeight * cellSize;
+
+        let gameOver = false;  // Track if the game has ended
+
+        class Wall {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            draw() {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        class Sprite {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = cellSize - 4;
+                this.height = cellSize - 4;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.gravity = { x: 0, y: 0.5 }; // Gravity starts downward
+            }
+
+            draw() {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+
+            update() {
+                if (gameOver) return;
+
+                // Apply gravity in the current direction
+                this.velocityX += this.gravity.x;
+                this.velocityY += this.gravity.y;
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Collision detection with walls
+                walls.forEach(wall => {
+                    if (this.checkCollision(wall)) {
+                        // Adjust for different collision sides based on movement direction
+                        if (this.velocityY > 0 && this.y < wall.y) {
+                            this.y = wall.y - this.height;
+                            this.velocityY = 0;
+                        } else if (this.velocityY < 0 && this.y > wall.y) {
+                            this.y = wall.y + wall.height;
+                            this.velocityY = 0;
+                        } else if (this.velocityX > 0 && this.x < wall.x) {
+                            this.x = wall.x - this.width;
+                            this.velocityX = 0;
+                        } else if (this.velocityX < 0 && this.x > wall.x) {
+                            this.x = wall.x + wall.width;
+                            this.velocityX = 0;
+                        }
+                    }
+                });
+
+                // Keep sprite within canvas bounds
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.velocityY = 0;
+                } else if (this.y < 0) {
+                    this.y = 0;
+                    this.velocityY = 0;
+                }
+
+                if (this.x + this.width > canvas.width) {
+                    this.x = canvas.width - this.width;
+                    this.velocityX = 0;
+                } else if (this.x < 0) {
+                    this.x = 0;
+                    this.velocityX = 0;
+                }
+
+                // Check for victory condition (reaching the red goal)
+                if (this.checkVictory()) {
+                    gameOver = true;
+                    showVictoryScreen();
+                }
+            }
+
+            checkCollision(wall) {
+                return this.x < wall.x + wall.width &&
+                       this.x + this.width > wall.x &&
+                       this.y < wall.y + wall.height &&
+                       this.y + this.height > wall.y;
+            }
+
+            checkVictory() {
+                const goalX = (mazeWidth - 1) * cellSize;
+                const goalY = (mazeHeight - 2) * cellSize;
+                return (
+                    this.x + this.width > goalX &&
+                    this.x < goalX + cellSize &&
+                    this.y + this.height > goalY &&
+                    this.y < goalY + cellSize
+                );
+            }
+        }
+
+        class GravityManager {
+            constructor() {
+                this.currentRotation = 0; // in radians
+                this.gravityMagnitude = 0.5; // Gravity strength
+                this.updateGravity(); // Initialize gravity
+            }
+
+            rotate(direction) {
+                const angleStep = Math.PI / 2;
+                this.currentRotation += direction === 'right' ? angleStep : -angleStep;
+                this.updateGravity();
+            }
+
+            updateGravity() {
+                switch (this.currentRotation % (2 * Math.PI)) {
+                    case 0: // Down
+                        sprite.gravity = { x: 0, y: this.gravityMagnitude };
+                        break;
+                    case Math.PI / 2: // Right
+                        sprite.gravity = { x: this.gravityMagnitude, y: 0 };
+                        break;
+                    case Math.PI: // Up
+                        sprite.gravity = { x: 0, y: -this.gravityMagnitude };
+                        break;
+                    case -Math.PI / 2: // Left
+                        sprite.gravity = { x: -this.gravityMagnitude, y: 0 };
+                        break;
+                }
+            }
+        }
+
+        let walls = [];
+        let sprite = new Sprite(cellSize, cellSize);
+        let gravityManager = new GravityManager();
+
+        function generateMaze() {
+            let grid = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(1));
+
+            function getUnvisitedNeighbors(x, y) {
+                const neighbors = [
+                    [x, y - 2], [x + 2, y], [x, y + 2], [x - 2, y]
+                ];
+                return neighbors.filter(([nx, ny]) => 
+                    nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && grid[ny][nx] === 1
+                );
+            }
+
+            function carvePath(x, y) {
+                grid[y][x] = 0;
+
+                const neighbors = getUnvisitedNeighbors(x, y);
+                while (neighbors.length > 0) {
+                    const [nx, ny] = neighbors.splice(Math.floor(Math.random() * neighbors.length), 1)[0];
+                    if (grid[ny][nx] === 1) {
+                        grid[y + (ny - y) / 2][x + (nx - x) / 2] = 0;
+                        carvePath(nx, ny);
+                    }
+                }
+            }
+
+            carvePath(1, 1);
+
+            grid[1][0] = 0;
+            grid[mazeHeight - 2][mazeWidth - 1] = 0;
+
+            for (let y = 0; y < mazeHeight; y++) {
+                for (let x = 0; x < mazeWidth; x++) {
+                    if (grid[y][x] === 1) {
+                        walls.push(new Wall(x * cellSize, y * cellSize, cellSize, cellSize));
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all walls
+            walls.forEach(wall => wall.draw());
+
+            // Draw start point (green)
+            ctx.fillStyle = 'green';
+            ctx.fillRect(0, cellSize, cellSize, cellSize);
+
+            // Draw end point (red)
+            ctx.fillStyle = 'red';
+            ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
+
+            // Draw the sprite
+            sprite.draw();
+        }
+
+        function gameLoop() {
+            if (!gameOver) {
+                sprite.update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function showVictoryScreen() {
+            victoryScreen.style.display = 'block';  // Show the victory screen
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameOver) {
+                if (e.key === 'ArrowRight') {
+                    gravityManager.rotate('right');
+                } else if (e.key === 'ArrowLeft') {
+                    gravityManager.rotate('left');
+                }
+            }
+        });
+
+        generateMaze();
+        gameLoop();
+    </script>
+</body>
+</html>
