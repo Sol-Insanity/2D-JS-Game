@@ -1,134 +1,139 @@
-        // Get references to the canvas and its context, and the victory screen div
-        const canvas = document.getElementById('mazeCanvas');
-        const ctx = canvas.getContext('2d');
-        const victoryScreen = document.getElementById('victoryScreen');
+// Get references to the canvas and its context, and the victory screen div
+const canvas = document.getElementById('mazeCanvas');         // Reference to the canvas element
+const ctx = canvas.getContext('2d');                          // 2D rendering context for drawing
+const victoryScreen = document.getElementById('victoryScreen');  // Reference to the victory screen element
 
-        // Configuration for maze cell size and overall dimensions
-        const cellSize = 20;        // Each cell in the maze is 20x20 pixels
-        const mazeWidth = 21;       // Maze grid is 21 cells wide
-        const mazeHeight = 21;      // Maze grid is 21 cells tall
+// Configuration for maze cell size and overall dimensions
+const cellSize = 20;        // Size of each cell in pixels (20x20)
+const mazeWidth = 15;       // Width of the maze in cells (minimum 15, maximum 29)
+const mazeHeight = 15;      // Height of the maze in cells (minimum 15, maximum 29)
 
-        // Set the canvas dimensions based on maze size
-        canvas.width = mazeWidth * cellSize;
-        canvas.height = mazeHeight * cellSize;
+// Calculate the diagonal length of the maze to ensure it fits when rotated
+const mazeDiagonal = Math.sqrt(Math.pow(mazeWidth * cellSize, 2) + Math.pow(mazeHeight * cellSize, 2));
 
-        // Flag to indicate if the game is over
-        let gameOver = false;
+// Set the canvas dimensions based on the diagonal length
+canvas.width = mazeDiagonal;   // Set canvas width to fit rotated maze
+canvas.height = mazeDiagonal;  // Set canvas height to fit rotated maze
 
-        // Class definition for the walls of the maze
-        class Wall {
-            constructor(x, y, width, height) {
-                this.x = x;       // X coordinate of the wall's top-left corner
-                this.y = y;       // Y coordinate of the wall's top-left corner
-                this.width = width; // Width of the wall
-                this.height = height; // Height of the wall
-            }
+// Center the canvas on the screen using CSS
+canvas.style.position = 'absolute';
+canvas.style.left = '50%';
+canvas.style.top = '50%';
+canvas.style.transform = 'translate(-50%, -50%)';
 
-            // Draw the wall on the canvas
-            draw() {
-                ctx.fillStyle = 'black'; // Set color for walls
-                ctx.fillRect(this.x, this.y, this.width, this.height); // Draw filled rectangle for the wall
-            }
-        }
+// Flag to indicate if the game is over
+let gameOver = false;
 
-        // Class for the player's sprite (the moving object within the maze)
-        class Sprite {
-            constructor(x, y) {
-                this.x = x;       // X coordinate of the sprite's position
-                this.y = y;       // Y coordinate of the sprite's position
-                this.width = cellSize - 4;  // Sprite size slightly smaller than the cell to give spacing
-                this.height = cellSize - 4;
-                this.velocityX = 0;  // Initial velocity along X axis
-                this.velocityY = 0;  // Initial velocity along Y axis
-                this.gravity = 0.5;  // Magnitude of the gravity applied to the sprite
-            }
+// Variables for rotation animation
+let currentRotation = 0;    // Current rotation angle of the maze
+let targetRotation = 0;     // Target rotation angle for smooth animation
+let isRotating = false;     // Flag to indicate if maze is currently rotating
+const rotationSpeed = 0.1;  // Speed of rotation animation (adjust as needed)
 
-            // Draw the sprite on the canvas
-            draw() {
-                ctx.fillStyle = 'red';  // Set sprite color to red
-                ctx.fillRect(this.x, this.y, this.width, this.height);  // Draw the sprite as a red square
-            }
+// Class definition for the walls of the maze
+class Wall {
+    constructor(x, y, width, height) {
+        this.x = x;           // X-coordinate of the wall
+        this.y = y;           // Y-coordinate of the wall
+        this.width = width;   // Width of the wall
+        this.height = height; // Height of the wall
+    }
 
-            // Update sprite's position and handle collisions and gravity
-            update() {
-                if (gameOver) return; // If game is over, stop updating
+    draw() {
+        ctx.fillStyle = 'black';                           // Set wall color to black
+        ctx.fillRect(this.x, this.y, this.width, this.height);  // Draw the wall as a filled rectangle
+    }
+}
 
-                // Apply gravity based on the current rotation of the maze
-                this.velocityX += this.gravity * Math.sin(currentRotation); // Adjust X velocity using sine of rotation
-                this.velocityY += this.gravity * Math.cos(currentRotation); // Adjust Y velocity using cosine of rotation
+// Class for the player's sprite
+class Sprite {
+    constructor(x, y) {
+        this.x = x;                     // X-coordinate of the sprite
+        this.y = y;                     // Y-coordinate of the sprite
+        this.width = cellSize - 4;      // Width of the sprite (slightly smaller than cell)
+        this.height = cellSize - 4;     // Height of the sprite (slightly smaller than cell)
+        this.velocityX = 0;             // Horizontal velocity of the sprite
+        this.velocityY = 0;             // Vertical velocity of the sprite
+        this.gravity = 0.5;             // Gravity strength affecting the sprite
+    }
 
-                // Calculate new position based on current velocity
-                let newX = this.x + this.velocityX;
-                let newY = this.y + this.velocityY;
+    draw() {
+        ctx.fillStyle = 'blue';                             // Set sprite color to red
+        ctx.fillRect(this.x, this.y, this.width, this.height);  // Draw the sprite as a filled rectangle
+    }
 
-                // Check for collisions with walls
-                let collided = false; // Track whether a collision occurs
-                walls.forEach(wall => {
-                    if (this.checkCollision(newX, newY, wall)) { // If a collision is detected
-                        collided = true;
-                        // Handle collision response
-                        // Determine which velocity to adjust based on the direction of the collision
-                        if (Math.abs(this.velocityX) > Math.abs(this.velocityY)) {
-                            this.velocityX = 0; // Stop horizontal movement
-                            // Adjust X position based on the collision direction
-                            newX = this.velocityX > 0 ? wall.x - this.width : wall.x + wall.width;
-                        } else {
-                            this.velocityY = 0; // Stop vertical movement
-                            // Adjust Y position based on the collision direction
-                            newY = this.velocityY > 0 ? wall.y - this.height : wall.y + wall.height;
-                        }
-                    }
-                });
+    update() {
+        if (gameOver || isRotating) return;  // Don't update if game is over or maze is rotating
 
-                // If no collision, update the sprite's position
-                if (!collided) {
-                    this.x = newX;
-                    this.y = newY;
-                }
+        // Apply gravity based on the current rotation
+        this.velocityX += this.gravity * Math.sin(currentRotation);
+        this.velocityY += this.gravity * Math.cos(currentRotation);
 
-                // Ensure the sprite stays within the canvas bounds
-                this.x = Math.max(0, Math.min(this.x, canvas.width - this.width));
-                this.y = Math.max(0, Math.min(this.y, canvas.height - this.height));
+        let newX = this.x + this.velocityX;  // Calculate new X position
+        let newY = this.y + this.velocityY;  // Calculate new Y position
 
-                // Apply friction to gradually reduce velocity
-                this.velocityX *= 0.98;
-                this.velocityY *= 0.98;
-
-                // Check if the sprite has reached the goal (victory condition)
-                if (this.checkVictory()) {
-                    gameOver = true; // End the game
-                    showVictoryScreen(); // Display victory message
+        let collided = false;
+        walls.forEach(wall => {
+            if (this.checkCollision(newX, newY, wall)) {
+                collided = true;
+                // Adjust position based on collision direction
+                if (Math.abs(this.velocityX) > Math.abs(this.velocityY)) {
+                    this.velocityX = 0;
+                    newX = this.velocityX > 0 ? wall.x - this.width : wall.x + wall.width;
+                } else {
+                    this.velocityY = 0;
+                    newY = this.velocityY > 0 ? wall.y - this.height : wall.y + wall.height;
                 }
             }
+        });
 
-            // Check if the sprite is colliding with a wall
-            checkCollision(x, y, wall) {
-                return x < wall.x + wall.width &&
-                       x + this.width > wall.x &&
-                       y < wall.y + wall.height &&
-                       y + this.height > wall.y;
-            }
-
-            // Check if the sprite has reached the goal (bottom-right corner of the maze)
-            checkVictory() {
-                const goalX = (mazeWidth - 1) * cellSize;  // X position of goal
-                const goalY = (mazeHeight - 2) * cellSize; // Y position of goal
-                return (
-                    this.x + this.width > goalX &&
-                    this.x < goalX + cellSize &&
-                    this.y + this.height > goalY &&
-                    this.y < goalY + cellSize
-                );
-            }
+        if (!collided) {
+            this.x = newX;  // Update X position if no collision
+            this.y = newY;  // Update Y position if no collision
         }
 
-        // Array to hold all wall objects
-        let walls = [];
-        // Create the player's sprite at the starting position (top-left corner)
-        let sprite = new Sprite(cellSize, cellSize);
-        // Track the current rotation of the maze
-        let currentRotation = 0;
+        // Keep the sprite within the canvas bounds
+        this.x = Math.max(0, Math.min(this.x, mazeWidth * cellSize - this.width));
+        this.y = Math.max(0, Math.min(this.y, mazeHeight * cellSize - this.height));
 
+        // Apply friction to slow down the sprite
+        this.velocityX *= 0.98;
+        this.velocityY *= 0.98;
+
+        // Check for victory condition
+        if (this.checkVictory()) {
+            gameOver = true;
+            showVictoryScreen();
+        }
+    }
+
+    checkCollision(x, y, wall) {
+        // Check if sprite overlaps with a wall
+        return x < wall.x + wall.width &&
+               x + this.width > wall.x &&
+               y < wall.y + wall.height &&
+               y + this.height > wall.y;
+    }
+
+    checkVictory() {
+        // Check if sprite has reached the exit
+        const goalX = (mazeWidth - 1) * cellSize;
+        const goalY = (mazeHeight - 2) * cellSize;
+        return (
+            this.x + this.width > goalX &&
+            this.x < goalX + cellSize &&
+            this.y + this.height > goalY &&
+            this.y < goalY + cellSize
+        );
+    }
+}
+
+// Array to hold all wall objects
+let walls = [];
+// Create the player's sprite at the starting position
+let sprite = new Sprite(cellSize, cellSize);
+
+/*********************************************************  Maze Generation Algorithm *********************************************************/
 
         /*
         * This function generates a maze using the Depth-First Search (DFS) algorithm.
@@ -220,70 +225,102 @@
             }
         }
 
+/*********************************************************  End of Algorithm *********************************************************/
 
-        // Draw the maze and sprite on the canvas
-        function draw() {
-            // Clear the canvas before each frame
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw() {
+    // Clear the entire canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Save the current canvas state (before rotation)
-            ctx.save();
-            // Translate the canvas to its center to allow rotation around the middle
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            // Apply the current rotation to the maze
-            ctx.rotate(currentRotation);
-            // Translate back to the original position
-            ctx.translate(-canvas.width / 2, -canvas.height / 2);
+    // Disable anti-aliasing
+    ctx.imageSmoothingEnabled = false;
 
-            // Draw each wall
-            walls.forEach(wall => wall.draw());
+    // Save the current context state
+    ctx.save();
 
-            // Draw the goal (green square) in the bottom-right corner
-            ctx.fillStyle = 'green';
-            ctx.fillRect(0, cellSize, cellSize, cellSize);
+    // Move the context to the center of the canvas
+    ctx.translate(canvas.width / 2, canvas.height / 2);
 
-            // Draw the exit (red square) at the goal position
-            ctx.fillStyle = 'red';
-            ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
+    // Rotate the context
+    ctx.rotate(currentRotation);
 
-            // Draw the sprite
-            sprite.draw();
+    // Move the context back, considering the actual maze size
+    ctx.translate(-mazeWidth * cellSize / 2, -mazeHeight * cellSize / 2);
 
-            // Restore the canvas state (undo rotation)
-            ctx.restore();
+    // Draw all walls
+    walls.forEach(wall => wall.draw());
+
+    // Draw the entrance (green)
+    ctx.fillStyle = 'green';
+    ctx.fillRect(0, cellSize, cellSize, cellSize);
+
+    // Draw the exit (red)
+    ctx.fillStyle = 'red';
+    ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
+
+    // Draw the player's sprite
+    sprite.draw();
+
+    // Restore the context to its original state
+    ctx.restore();
+}
+
+function updateRotation() {
+    if (isRotating) {
+        // Calculate the difference between target and current rotation
+        const rotationDiff = targetRotation - currentRotation;
+        if (Math.abs(rotationDiff) > 0.01 /* 0.01 Default*/ ) {
+            // Smoothly interpolate towards the target rotation
+            currentRotation += rotationDiff * rotationSpeed;
+        } else {
+            // Rotation complete
+            currentRotation = targetRotation;
+            isRotating = false;
+            updateSpriteVelocity();
         }
+    }
+}
 
-        // Main game loop that continuously updates the game state and redraws the screen
-        function gameLoop() {
-            if (!gameOver) {
-                sprite.update(); // Update the sprite's position and check for collisions
-                draw(); // Redraw the canvas
-                requestAnimationFrame(gameLoop); // Repeat the loop on the next frame
-            }
+function updateSpriteVelocity() {
+    // Recalculate sprite velocity based on new rotation
+    const speed = Math.sqrt(sprite.velocityX ** 2 + sprite.velocityY ** 2);
+    sprite.velocityX = speed * Math.sin(currentRotation);
+    sprite.velocityY = speed * Math.cos(currentRotation);
+}
+
+function gameLoop() {
+    if (!gameOver) {
+        sprite.update();     // Update sprite position
+        updateRotation();    // Update maze rotation
+        draw();              // Redraw the game
+        requestAnimationFrame(gameLoop);  // Schedule next frame
+    }
+}
+
+function rotateMaze(direction) {
+    if (!isRotating) {
+        // Set the target rotation based on direction
+        const angleStep = Math.PI / 2;  // 90 degrees in radians
+        targetRotation += direction === 'right' ? angleStep : -angleStep;
+        isRotating = true;
+    }
+}
+
+function showVictoryScreen() {
+    // Display the victory screen
+    victoryScreen.style.display = 'block';
+}
+
+// Event listener for keyboard input
+window.addEventListener('keydown', (e) => {
+    if (!gameOver) {
+        if (e.key === 'ArrowRight') {
+            rotateMaze('right');  // Rotate maze right on right arrow key
+        } else if (e.key === 'ArrowLeft') {
+            rotateMaze('left');   // Rotate maze left on left arrow key
         }
+    }
+});
 
-        // Function to rotate the maze either left or right
-        function rotateMaze(direction) {
-            const angleStep = Math.PI / 2; // 90 degrees in radians
-            currentRotation += direction === 'right' ? angleStep : -angleStep; // Rotate either clockwise or counterclockwise
-        }
-
-        // Function to display the victory screen when the player wins
-        function showVictoryScreen() {
-            victoryScreen.style.display = 'block'; // Show the victory screen div
-        }
-
-        // Add event listener for arrow key presses to rotate the maze
-        window.addEventListener('keydown', (e) => {
-            if (!gameOver) {
-                if (e.key === 'ArrowRight') {
-                    rotateMaze('right'); // Rotate maze clockwise
-                } else if (e.key === 'ArrowLeft') {
-                    rotateMaze('left'); // Rotate maze counterclockwise
-                }
-            }
-        });
-
-        // Generate the maze and start the game loop
-        generateMaze();
-        gameLoop();
+// Initialize the game
+generateMaze();  // Generate the maze layout
+gameLoop();      // Start the game loop
