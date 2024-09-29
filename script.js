@@ -129,57 +129,97 @@
         // Track the current rotation of the maze
         let currentRotation = 0;
 
-        // Function to generate a random maze
+
+        /*
+        * This function generates a maze using the Depth-First Search (DFS) algorithm.
+        * The maze is represented by a 2D grid, where:
+        *  - 1 represents a wall.
+        *  - 0 represents a path.
+        * Initially, all cells are marked as walls (1).
+        * The maze is carved out by recursively visiting cells and removing walls between them.
+        */
         function generateMaze() {
-            // Create a grid representing the maze. Initially, all cells are walls (1).
+            // Create a 2D grid where all cells are walls (1) to start with.
             let grid = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(1));
 
-            // Helper function to get unvisited neighboring cells for maze carving
+            /**
+             * Helper function to get unvisited neighboring cells.
+             * It checks for neighbors two cells away from the current position (x, y) in all directions: North, East, South, and West.
+             * The function filters out neighbors that are out of bounds or already part of the maze (i.e., visited cells).
+             * 
+             * @param {number} x - The x-coordinate of the current cell.
+             * @param {number} y - The y-coordinate of the current cell.
+             * @returns {Array} - A list of unvisited neighboring cells (each neighbor is represented by its [x, y] coordinates).
+             */
             function getUnvisitedNeighbors(x, y) {
-                // Return neighbors two cells away in all four directions (N, E, S, W)
+                // Potential neighbors two cells away in four directions: North, East, South, West.
                 const neighbors = [
-                    [x, y - 2], [x + 2, y], [x, y + 2], [x - 2, y]
+                    [x, y - 2], // North
+                    [x + 2, y], // East
+                    [x, y + 2], // South
+                    [x - 2, y]  // West
                 ];
-                // Filter out neighbors that are out of bounds or already visited
-                return neighbors.filter(([nx, ny]) => 
+                // Filter neighbors that are out of bounds or already visited (where grid[ny][nx] is not 1).
+                return neighbors.filter(([nx, ny]) =>
                     nx >= 0 && nx < mazeWidth && ny >= 0 && ny < mazeHeight && grid[ny][nx] === 1
                 );
             }
 
-            // Recursive function to carve paths in the maze using a depth-first search
+            /**
+             * Recursive function to carve paths in the maze using Depth-First Search (DFS).
+             * This function starts from the current cell (x, y), marks it as part of the maze (0),
+             * and randomly chooses a neighboring unvisited cell to carve a path to.
+             * The function continues carving recursively from each newly visited neighbor until no unvisited neighbors are left.
+             * 
+             * @param {number} x - The x-coordinate of the current cell.
+             * @param {number} y - The y-coordinate of the current cell.
+             */
             function carvePath(x, y) {
-                grid[y][x] = 0; // Mark the current cell as part of the path
+                grid[y][x] = 0; // Mark the current cell as a path (visited).
 
-                // Get unvisited neighboring cells
+                // Get a list of unvisited neighboring cells.
                 const neighbors = getUnvisitedNeighbors(x, y);
-                // Randomly process each neighbor
+
+                // Continue carving while there are unvisited neighbors.
                 while (neighbors.length > 0) {
-                    // Randomly choose a neighbor and remove it from the list
+                    // Randomly choose a neighbor and remove it from the list.
                     const [nx, ny] = neighbors.splice(Math.floor(Math.random() * neighbors.length), 1)[0];
-                    // If the neighbor hasn't been visited, carve a path to it
+
+                    // If the chosen neighbor has not been visited, remove the wall between the current cell and the neighbor.
                     if (grid[ny][nx] === 1) {
-                        grid[y + (ny - y) / 2][x + (nx - x) / 2] = 0; // Remove the wall between the current cell and neighbor
-                        carvePath(nx, ny); // Recursively carve from the neighbor
+                        // Remove the wall between the current cell and the chosen neighbor by marking the wall cell as part of the path.
+                        // The wall is located halfway between the current cell (x, y) and the neighbor (nx, ny).
+                        grid[y + (ny - y) / 2][x + (nx - x) / 2] = 0;
+
+                        // Recursively carve paths starting from the chosen neighbor.
+                        carvePath(nx, ny);
                     }
                 }
             }
 
-            // Start maze generation from the cell at (1, 1)
+            // Start carving the maze from the cell at (1, 1).
+            // This ensures that the maze has an alternating pattern of walls and paths.
             carvePath(1, 1);
 
-            // Create an entrance at the top-left and an exit at the bottom-right
-            grid[1][0] = 0;
-            grid[mazeHeight - 2][mazeWidth - 1] = 0;
+            // Create an entrance at the top-left corner (1, 0) and an exit at the bottom-right corner (mazeHeight-2, mazeWidth-1).
+            grid[1][0] = 0; // Entrance
+            grid[mazeHeight - 2][mazeWidth - 1] = 0; // Exit
 
-            // Convert the maze grid into Wall objects
+            /*
+             * After generating the maze, convert the grid into Wall objects for rendering.
+             * Any grid cell that is marked as a wall (1) is turned into a Wall object.
+             * Each Wall object is created based on its position in the grid and the specified cellSize for rendering.
+             */
             for (let y = 0; y < mazeHeight; y++) {
                 for (let x = 0; x < mazeWidth; x++) {
                     if (grid[y][x] === 1) {
-                        walls.push(new Wall(x * cellSize, y * cellSize, cellSize, cellSize)); // Add walls where the grid has 1s
+                        // Create a wall object for each cell marked as 1 (wall).
+                        walls.push(new Wall(x * cellSize, y * cellSize, cellSize, cellSize));
                     }
                 }
             }
         }
+
 
         // Draw the maze and sprite on the canvas
         function draw() {
