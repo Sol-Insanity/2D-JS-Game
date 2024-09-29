@@ -1,3 +1,23 @@
-<canvas></canvas>
+<!--
+    1. Simplified the gravity logic to be determined by a seperate fixed point instead of relative to the maze itself
+    2. Check Collisions before determining Position
+    3. Gave the sprite friction to prevent excessive sliding
+-->
 
-<script src="index.js"></script>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze with Fixed-Point Gravity Sprite</title>
+    <script src="script.js" defer></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Canvas where the maze will be drawn -->
+    <canvas id="mazeCanvas"></canvas>
+    <!-- Victory screen that appears when the player wins -->
+    <div id="victoryScreen">🎉 Victory! You Won! 🎉</div>    
+</body>
+</html>

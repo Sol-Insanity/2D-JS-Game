@@ -5,16 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Maze with Gravity-Affected Sprite</title>
     <style>
+        /* Style the canvas with a border */
         canvas {
             border: 1px solid black;
         }
 
+        /* Style for the victory screen */
         #victoryScreen {
-            display: none;
+            display: none; /* Hidden by default */
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%); /* Center the victory screen */
             font-size: 2em;
             color: green;
             text-align: center;
@@ -22,22 +24,28 @@
     </style>
 </head>
 <body>
+    <!-- Canvas element where the maze will be drawn -->
     <canvas id="mazeCanvas"></canvas>
+    <!-- Victory screen element -->
     <div id="victoryScreen">🎉 Victory! You Won! 🎉</div>
     <script>
+        // Get references to the canvas and its 2D rendering context
         const canvas = document.getElementById('mazeCanvas');
         const ctx = canvas.getContext('2d');
         const victoryScreen = document.getElementById('victoryScreen');
 
+        // Define maze and cell dimensions
         const cellSize = 20;
         const mazeWidth = 21;
         const mazeHeight = 21;
 
+        // Set canvas dimensions based on maze size
         canvas.width = mazeWidth * cellSize;
         canvas.height = mazeHeight * cellSize;
 
         let gameOver = false;  // Track if the game has ended
 
+        // Wall class to represent maze walls
         class Wall {
             constructor(x, y, width, height) {
                 this.x = x;
@@ -46,12 +54,14 @@
                 this.height = height;
             }
 
+            // Method to draw the wall
             draw() {
                 ctx.fillStyle = 'black';
                 ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         }
 
+        // Sprite class to represent the player
         class Sprite {
             constructor(x, y) {
                 this.x = x;
@@ -60,28 +70,31 @@
                 this.height = cellSize - 4;
                 this.velocityX = 0;
                 this.velocityY = 0;
-                this.gravity = { x: 0, y: 0.5 }; // Gravity starts downward
+                this.gravity = { x: 0, y: 0.5 }; // Initial gravity direction (downward)
             }
 
+            // Method to draw the sprite
             draw() {
                 ctx.fillStyle = 'red';
                 ctx.fillRect(this.x, this.y, this.width, this.height);
             }
 
+            // Method to update sprite position and handle collisions
             update() {
                 if (gameOver) return;
 
-                // Apply gravity in the current direction
+                // Apply gravity
                 this.velocityX += this.gravity.x;
                 this.velocityY += this.gravity.y;
 
+                // Update position
                 this.x += this.velocityX;
                 this.y += this.velocityY;
 
                 // Collision detection with walls
                 walls.forEach(wall => {
                     if (this.checkCollision(wall)) {
-                        // Adjust for different collision sides based on movement direction
+                        // Adjust position based on collision side
                         if (this.velocityY > 0 && this.y < wall.y) {
                             this.y = wall.y - this.height;
                             this.velocityY = 0;
@@ -115,13 +128,14 @@
                     this.velocityX = 0;
                 }
 
-                // Check for victory condition (reaching the red goal)
+                // Check for victory condition
                 if (this.checkVictory()) {
                     gameOver = true;
                     showVictoryScreen();
                 }
             }
 
+            // Method to check collision with a wall
             checkCollision(wall) {
                 return this.x < wall.x + wall.width &&
                        this.x + this.width > wall.x &&
@@ -129,6 +143,7 @@
                        this.y + this.height > wall.y;
             }
 
+            // Method to check if sprite has reached the goal
             checkVictory() {
                 const goalX = (mazeWidth - 1) * cellSize;
                 const goalY = (mazeHeight - 2) * cellSize;
@@ -141,13 +156,15 @@
             }
         }
 
-        let walls = [];
-        let sprite = new Sprite(cellSize, cellSize);
-        let currentRotation = 0;
+        let walls = [];  // Array to store maze walls
+        let sprite = new Sprite(cellSize, cellSize);  // Create player sprite
+        let currentRotation = 0;  // Track current maze rotation
 
+        // Function to generate the maze
         function generateMaze() {
             let grid = Array(mazeHeight).fill().map(() => Array(mazeWidth).fill(1));
 
+            // Helper function to get unvisited neighbors
             function getUnvisitedNeighbors(x, y) {
                 const neighbors = [
                     [x, y - 2], [x + 2, y], [x, y + 2], [x - 2, y]
@@ -157,6 +174,7 @@
                 );
             }
 
+            // Recursive function to carve paths in the maze
             function carvePath(x, y) {
                 grid[y][x] = 0;
 
@@ -170,11 +188,13 @@
                 }
             }
 
-            carvePath(1, 1);
+            carvePath(1, 1);  // Start carving from (1, 1)
 
+            // Create entrance and exit
             grid[1][0] = 0;
             grid[mazeHeight - 2][mazeWidth - 1] = 0;
 
+            // Create Wall objects based on the grid
             for (let y = 0; y < mazeHeight; y++) {
                 for (let x = 0; x < mazeWidth; x++) {
                     if (grid[y][x] === 1) {
@@ -184,26 +204,32 @@
             }
         }
 
+        // Function to draw the maze and sprite
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Apply rotation to the entire canvas
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.rotate(currentRotation);
             ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
+            // Draw walls
             walls.forEach(wall => wall.draw());
 
+            // Draw start (green) and end (red) points
             ctx.fillStyle = 'green';
             ctx.fillRect(0, cellSize, cellSize, cellSize);
 
             ctx.fillStyle = 'red';
             ctx.fillRect((mazeWidth - 1) * cellSize, (mazeHeight - 2) * cellSize, cellSize, cellSize);
 
+            // Draw sprite
             sprite.draw();
             ctx.restore();
         }
 
+        // Main game loop
         function gameLoop() {
             if (!gameOver) {
                 sprite.update();
@@ -212,25 +238,27 @@
             }
         }
 
+        // Function to rotate the maze
         function rotateMaze(direction) {
             const angleStep = Math.PI / 2; // 90 degrees in radians
             currentRotation += direction === 'right' ? angleStep : -angleStep;
 
-            // Update gravity based on the current rotation using trigonometric functions
+            // Update gravity based on the current rotation
             const gravityMagnitude = 0.5;
             setTimeout(() => {
-        sprite.gravity = {
-            x: gravityMagnitude * Math.sin(currentRotation),
-            y: gravityMagnitude * Math.cos(currentRotation)
-        };
-    }, 300); // Delay for 500 milliseconds (adjust as needed)
+                sprite.gravity = {
+                    x: gravityMagnitude * Math.sin(currentRotation),
+                    y: gravityMagnitude * Math.cos(currentRotation)
+                };
+            }, 300); // Delay gravity change for smoother effect
         }
 
-
+        // Function to show the victory screen
         function showVictoryScreen() {
-            victoryScreen.style.display = 'block';  // Show the victory screen
+            victoryScreen.style.display = 'block';
         }
 
+        // Event listener for keyboard input
         window.addEventListener('keydown', (e) => {
             if (!gameOver) {
                 if (e.key === 'ArrowRight') {
@@ -241,6 +269,7 @@
             }
         });
 
+        // Initialize the game
         generateMaze();
         gameLoop();
     </script>

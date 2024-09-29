@@ -1,0 +1,20 @@
+/* Style for the canvas, giving it a solid border for visibility */
+canvas {
+    border: 1px solid black;
+    position: relative; /* Ensure the canvas has relative positioning */
+    z-index: 1; /* Set a lower z-index for the canvas */
+}
+
+/* Style for the victory screen message that displays when the player wins */
+#victoryScreen {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: 50%; /* Center the screen vertically */
+    left: 50%; /* Center the screen horizontally */
+    transform: translate(-50%, -50%); /* Translate the top-left corner to the exact center */
+    font-size: 2em; /* Larger text for visibility */
+    color: green; /* Color the text green */
+    text-align: center; /* Center the text */
+    z-index: 2; /* Ensure victory screen appears above the canvas */
+    background-color: rgba(255, 255, 255, 0.8); /* Optional: add a translucent background to make the message stand out */
+}
