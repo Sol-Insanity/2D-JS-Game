@@ -18,3 +18,40 @@ canvas {
     z-index: 2; /* Ensure victory screen appears above the canvas */
     background-color: rgba(255, 255, 255, 0.8); /* Optional: add a translucent background to make the message stand out */
 }
+
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+}
+
+#hudContainer {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    color: black;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.victoryMessage {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    font-size: 16px;
+    cursor: pointer;
+}

@@ -287,27 +287,80 @@ function updateSpriteVelocity() {
     sprite.velocityY = speed * Math.cos(currentRotation);
 }
 
-function gameLoop() {
+/*********************************************************  New Stuff *********************************************************/
+
+let startTime;
+let elapsedTime = 0;
+let rotationCount = 0;
+
+const timeDisplay = document.getElementById('timeDisplay');
+const rotationDisplay = document.getElementById('rotationDisplay');
+
+function updateHUD() {
+    const seconds = (elapsedTime / 1000).toFixed(2);
+    timeDisplay.textContent = `Time: ${seconds}`;
+    rotationDisplay.textContent = `Rotations: ${rotationCount}`;
+}
+
+/*********************************************************  New Stuff *********************************************************/
+
+function gameLoop(timestamp) {
     if (!gameOver) {
-        sprite.update();     // Update sprite position
-        updateRotation();    // Update maze rotation
-        draw();              // Redraw the game
-        requestAnimationFrame(gameLoop);  // Schedule next frame
+        if (!startTime) startTime = timestamp;
+        elapsedTime = timestamp - startTime;
+
+        sprite.update();
+        updateRotation();
+        draw();
+        updateHUD();
+        requestAnimationFrame(gameLoop);
     }
+}
+
+function restartGame() {
+    gameOver = false;
+    startTime = null;
+    elapsedTime = 0;
+    rotationCount = 0;
+    currentRotation = 0;
+    targetRotation = 0;
+    isRotating = false;
+    
+    walls = [];
+    sprite = new Sprite(cellSize, cellSize);
+    
+    generateMaze();
+    victoryScreen.style.display = 'none';
+    updateHUD();
+    gameLoop();
 }
 
 function rotateMaze(direction) {
     if (!isRotating) {
-        // Set the target rotation based on direction
-        const angleStep = Math.PI / 2;  // 90 degrees in radians
+        const angleStep = Math.PI / 2;
         targetRotation += direction === 'right' ? angleStep : -angleStep;
         isRotating = true;
+        rotationCount++;
+        updateHUD();
     }
 }
 
+
 function showVictoryScreen() {
-    // Display the victory screen
-    victoryScreen.style.display = 'block';
+    gameOver = true;
+    victoryScreen.style.display = 'flex';
+    victoryScreen.innerHTML = `
+        <div class="victoryMessage">
+            <h2>Victory!</h2>
+            <p>Time: ${(elapsedTime / 1000).toFixed(2)} seconds</p>
+            <p>Rotations: ${rotationCount}</p>
+            <button onclick="restartGame()">Play Again</button>
+        </div>
+    `;
+
+    // Play victory sound
+    const victorySound = new Audio('assets/Victory.mp3');
+    victorySound.play();
 }
 
 // Event listener for keyboard input

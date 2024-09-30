@@ -8,14 +8,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze That Gives You A Headache</title>
-    <script src="script.js" defer></script>
-    <link rel="stylesheet" href="style.css">
+    <title>Rotating Maze Game</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Canvas where the maze will be drawn -->
     <canvas id="mazeCanvas"></canvas>
-    <!-- Victory screen that appears when the player wins -->
-    <div id="victoryScreen">🎉 Victory! You Won! 🎉</div>    
+    <div id="hudContainer">
+        <div id="timeDisplay">Time: 0.000</div>
+        <div id="rotationDisplay">Rotations: 0</div>
+    </div>
+    <div id="victoryScreen"></div>
+    <script src="script.js"></script>
 </body>
 </html>
