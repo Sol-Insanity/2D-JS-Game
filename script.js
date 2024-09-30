@@ -29,6 +29,10 @@ let currentRotation = 0;    // Current rotation angle of the maze
 let targetRotation = 0;     // Target rotation angle for smooth animation
 let isRotating = false;     // Flag to indicate if maze is currently rotating
 const rotationSpeed = 0.1;  // Speed of rotation animation (adjust as needed)
+let collisionSound = new Audio('assets/tok.mp3');
+let reSound = new Audio('assets/re.mp3');
+let soundPlayed = false;
+let isFalling = true;
 
 // Class definition for the walls of the maze
 class Wall {
@@ -64,49 +68,73 @@ class Sprite {
 
     update() {
         if (gameOver || isRotating) return;  // Don't update if game is over or maze is rotating
-
+    
         // Apply gravity based on the current rotation
         this.velocityX += this.gravity * Math.sin(currentRotation);
         this.velocityY += this.gravity * Math.cos(currentRotation);
-
+    
         let newX = this.x + this.velocityX;  // Calculate new X position
         let newY = this.y + this.velocityY;  // Calculate new Y position
-
+    
         let collided = false;
+    
         walls.forEach(wall => {
             if (this.checkCollision(newX, newY, wall)) {
                 collided = true;
+    
                 // Adjust position based on collision direction
                 if (Math.abs(this.velocityX) > Math.abs(this.velocityY)) {
-                    this.velocityX = 0;
+                    if (this.velocityX !== 0) {
+                        this.velocityX = 0;
+    
+                        // Trigger sound if collision happens while falling
+                        if (isFalling && !soundPlayed) {
+                            collisionSound.play();
+                            soundPlayed = true;
+                        }
+                    }
                     newX = this.velocityX > 0 ? wall.x - this.width : wall.x + wall.width;
                 } else {
-                    this.velocityY = 0;
+                    if (this.velocityY !== 0) {
+                        this.velocityY = 0;
+    
+                        // Trigger sound if collision happens while falling
+                        if (isFalling && !soundPlayed) {
+                            collisionSound.play();
+                            soundPlayed = true;
+                        }
+                    }
                     newY = this.velocityY > 0 ? wall.y - this.height : wall.y + wall.height;
                 }
             }
         });
-
+    
         if (!collided) {
-            this.x = newX;  // Update X position if no collision
-            this.y = newY;  // Update Y position if no collision
+            // If no collision, update position and reset the sound flag
+            this.x = newX;
+            this.y = newY;
+            soundPlayed = false;  // Reset sound flag when not colliding
+            isFalling = true;  // Continue falling
+        } else {
+            // If collision happens, mark the sprite as no longer falling
+            isFalling = false;
         }
-
+    
         // Keep the sprite within the canvas bounds
         this.x = Math.max(0, Math.min(this.x, mazeWidth * cellSize - this.width));
         this.y = Math.max(0, Math.min(this.y, mazeHeight * cellSize - this.height));
-
+    
         // Apply friction to slow down the sprite
         this.velocityX *= 0.98;
         this.velocityY *= 0.98;
-
+    
         // Check for victory condition
         if (this.checkVictory()) {
             gameOver = true;
             showVictoryScreen();
         }
     }
-
+    
     checkCollision(x, y, wall) {
         // Check if sprite overlaps with a wall
         return x < wall.x + wall.width &&
@@ -131,7 +159,7 @@ class Sprite {
 // Array to hold all wall objects
 let walls = [];
 // Create the player's sprite at the starting position
-let sprite = new Sprite(cellSize, cellSize);
+let sprite = new Sprite(0, cellSize);
 
 /*********************************************************  Maze Generation Algorithm *********************************************************/
 
@@ -332,6 +360,7 @@ function restartGame() {
     generateMaze();
     victoryScreen.style.display = 'none';
     updateHUD();
+    reSound.play();
     gameLoop();
 }
 
